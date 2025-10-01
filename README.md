@@ -17,17 +17,7 @@
 
 ---
 
-## 目录结构
 
-```
-/your-project
-├─ src/
-│  ├─ radar_protocol.h
-│  └─ radar_protocol.cpp
-└─ your_sketch.ino
-```
-
----
 
 ## 快速开始
 
