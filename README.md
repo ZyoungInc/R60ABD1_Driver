@@ -784,5 +784,205 @@ SUM = (帧头53+59 + CTRL + CMD + LEN_H + LEN_L + 所有DATA) 低8位
 | 上报/应答 | 0x02 |    0x04 / 0xA4 | N  | `g_product.fw_version[..], fw_version_len` | 字符串      |
 | 应答    | 0x03 | 0x01/0x02/0x03 | 见上 | —                                          | OTA 过程返回 |
 
+# ① 常态（查询/拉取类）
 
+## A. 人体存在（CTRL=0x80）
+
+| 调用函数                        | 作用   | CTRL | CMD(发送) | 预期应答CMD | DATA(TX) | 应答负载      | 写入字段                 | 备注           |
+| --------------------------- | ---- | ---: | ------: | ------: | -------: | --------- | -------------------- | ------------ |
+| `radar_query_body_enable()` | 查询开关 | 0x80 |    0x80 |    0x80 |     0x0F | 1B 开关     | `g_body.enabled`     | 0关/1开        |
+| `radar_query_exist()`       | 是否有人 | 0x80 |    0x81 |    0x81 |     0x0F | 1B 存在     | `g_body.exist`       | 0无人/1有人      |
+| `radar_query_motion()`      | 运动状态 | 0x80 |    0x82 |    0x82 |     0x0F | 1B 运动     | `g_body.motion`      | 0无/1静/2活     |
+| `radar_query_body_param()`  | 体动强度 | 0x80 |    0x83 |    0x83 |     0x0F | 1B 强度     | `g_body.body_param`  | 0~100        |
+| `radar_query_distance()`    | 距离   | 0x80 |    0x84 |    0x84 |     0x0F | 2B cm(BE) | `g_body.distance_cm` | 0~65535      |
+| `radar_query_direction()`   | 方位   | 0x80 |    0x85 |    0x85 |     0x0F | 6B x/y/z  | `g_body.pos_xyz[3]`  | 16位：符号+14位幅值 |
+
+## B. 呼吸（CTRL=0x81）
+
+| 调用函数                           | 作用   | CTRL | CMD(发) | 应答CMD | DATA | 应答负载     | 写入字段                       | 备注               |
+| ------------------------------ | ---- | ---: | -----: | ----: | ---: | -------- | -------------------------- | ---------------- |
+| `radar_query_breath_enable()`  | 查询开关 | 0x81 |   0x80 |  0x80 | 0x0F | 1B 开关    | `g_breath.enabled`         | 0/1              |
+| `radar_query_breath_info()`    | 呼吸信息 | 0x81 |   0x81 |  0x81 | 0x0F | 1B 状态    | `g_breath.info`            | 01正常/02高/03低/04无 |
+| `radar_query_breath_value()`   | 呼吸速率 | 0x81 |   0x82 |  0x82 | 0x0F | 1B 次/min | `g_breath.value`           | 0~35             |
+| `radar_query_breath_wave()`    | 呼吸波形 | 0x81 |   0x85 |  0x85 | 0x0F | 5B       | `g_breath.wave[5]`         | 中轴128            |
+| `radar_query_breath_lowslow()` | 低缓阈值 | 0x81 |   0x8B |  0x8B | 0x0F | 1B       | `g_breath.low_slow_thresh` | 10~20            |
+
+## C. 心率（CTRL=0x85）
+
+| 调用函数                         | 作用   | CTRL | CMD(发) | 应答CMD | DATA | 应答负载     | 写入字段              | 备注     |
+| ---------------------------- | ---- | ---: | -----: | ----: | ---: | -------- | ----------------- | ------ |
+| `radar_query_heart_enable()` | 查询开关 | 0x85 |   0x80 |  0x80 | 0x0F | 1B 开关    | `g_heart.enabled` | 0/1    |
+| `radar_query_heart_value()`  | 心率数值 | 0x85 |   0x82 |  0x82 | 0x0F | 1B 次/min | `g_heart.value`   | 60~120 |
+| `radar_query_heart_wave()`   | 心率波形 | 0x85 |   0x85 |  0x85 | 0x0F | 5B       | `g_heart.wave[5]` | 0~255  |
+
+## D. 睡眠（CTRL=0x84）
+
+### D1. 子命令查询（0x80+）
+
+| 调用函数                            | 作用      | CTRL | CMD(发) | 应答CMD | DATA | 应答负载     | 写入字段                           |
+| ------------------------------- | ------- | ---: | -----: | ----: | ---: | -------- | ------------------------------ |
+| `radar_query_sleep_enable()`    | 睡眠开关    | 0x84 |   0x80 |  0x80 | 0x0F | 1B       | `g_sleep.enabled`              |
+| `radar_query_sleep_bed_state()` | 入/离床    | 0x84 |   0x81 |  0x81 | 0x0F | 1B       | `g_sleep.bed_state` (0离/1入/2无) |
+| `radar_query_sleep_state()`     | 深/浅/醒/无 | 0x84 |   0x82 |  0x82 | 0x0F | 1B       | `g_sleep.state` (0深/1浅/2醒/3无)  |
+| `radar_query_awake_min()`       | 清醒分钟    | 0x84 |   0x83 |  0x83 | 0x0F | 2B(BE)   | `g_sleep.awake_min`            |
+| `radar_query_light_min()`       | 浅睡分钟    | 0x84 |   0x84 |  0x84 | 0x0F | 2B(BE)   | `g_sleep.light_min`            |
+| `radar_query_deep_min()`        | 深睡分钟    | 0x84 |   0x85 |  0x85 | 0x0F | 2B(BE)   | `g_sleep.deep_min`             |
+| `radar_query_sleep_score()`     | 过程评分    | 0x84 |   0x86 |  0x86 | 0x0F | 1B 0~100 | `g_sleep.score`                |
+
+### D2. 显式 opcode 查询（协议表里的 0x8C~）
+
+| 调用函数                              | 作用       | CTRL | CMD(发) | 应答CMD | DATA | 应答负载    | 写入字段                          | 备注                   |
+| --------------------------------- | -------- | ---: | -----: | ----: | ---: | ------- | ----------------------------- | -------------------- |
+| `radar_query_mode()`              | 上报模式     | 0x84 |   0x8C |  0x8C | 0x0F | 1B      | `g_sleep.cfg.mode`            | 0实时/1睡眠              |
+| `radar_query_composite10m()`      | 10分钟综合   | 0x84 |   0x8D |  0x8D | 0x0F | 8B      | `g_sleep.composite10m.*`      | 次均值/翻身/体动/暂停         |
+| `radar_query_abnormal()`          | 睡眠异常     | 0x84 |   0x8E |  0x8E | 0x0F | 1B      | `g_sleep.abnormal`            | 0不足4h/1>12h/2长时无人/3无 |
+| **`radar_query_night_summary()`** | **整夜统计** | 0x84 |   0x8F |  0x8F | 0x0F | **12B** | **`g_sleep.night.*`**         | 字段顺序见下               |
+| `radar_query_rating()`            | 质量评级     | 0x84 |   0x90 |  0x90 | 0x0F | 1B      | `g_sleep.night.grade`         | 0无/1良/2般/3差          |
+| `radar_query_struggle_state()`    | 挣扎状态     | 0x84 |   0x91 |  0x91 | 0x0F | 1B      | `g_sleep.struggle_state`      | 0无/1正常/2异常           |
+| `radar_query_noperson_state()`    | 无人状态     | 0x84 |   0x92 |  0x92 | 0x0F | 1B      | `g_sleep.noperson_state`      | 0无/1正常/2异常           |
+| `radar_query_struggle_switch()`   | 挣扎开关     | 0x84 |   0x93 |  0x93 | 0x0F | 1B      | `g_sleep.cfg.struggle_enable` | 0/1                  |
+| `radar_query_noperson_switch()`   | 无人计时开关   | 0x84 |   0x94 |  0x94 | 0x0F | 1B      | `g_sleep.cfg.noperson_enable` | 0/1                  |
+| `radar_query_noperson_minutes()`  | 无人分钟     | 0x84 |   0x95 |  0x95 | 0x0F | 1B      | `g_sleep.cfg.noperson_min`    | 5~120                |
+| `radar_query_cutoff_minutes()`    | 截止分钟     | 0x84 |   0x96 |  0x96 | 0x0F | 1B      | `g_sleep.cfg.cutoff_min`      | 30~180               |
+| `radar_query_struggle_sens()`     | 挣扎灵敏度    | 0x84 |   0x9A |  0x9A | 0x0F | 1B      | `g_sleep.cfg.struggle_sens`   | 0/1/2                |
+
+**整夜统计（0x0D 上报/0x8F 应答）12B 字段顺序**
+`score(1B), total_min(2B,BE), awake_pct(1B), light_pct(1B), deep_pct(1B), outbed_min(1B), outbed_cnt(1B), turn_cnt(1B), avg_breath(1B), avg_heart(1B), apnea_cnt(1B)`
+→ 库写入 `g_sleep.night` 的同名字段。
+
+## E. 系统/产品信息（常用查询）
+
+| 调用函数                          | 作用     | CTRL | CMD(发) |     应答CMD | DATA | 应答负载 | 写入字段                            |
+| ----------------------------- | ------ | ---: | -----: | --------: | ---: | ---- | ------------------------------- |
+| `radar_query_heartbeat()`     | 心跳查询   | 0x01 |   0x80 | 0x80/0x01 | 0x0F | —/1B | `g_sys.heartbeat=1`             |
+| `radar_query_initdone()`      | 初始化完成？ | 0x05 |   0x81 | 0x81/0x01 | 0x0F | 1B   | `g_sys.init_done` (0/1)         |
+| `radar_query_posout()`        | 探测范围状态 | 0x07 |   0x87 | 0x87/0x07 | 0x0F | 1B   | `g_sys.pos_outbound` (0外/1内)    |
+| `radar_query_product_model()` | 产品型号   | 0x02 |   0xA1 | 0xA1/0x01 | 0x0F | NB   | `g_product.model[..], len`      |
+| `radar_query_product_id()`    | 产品ID   | 0x02 |   0xA2 | 0xA2/0x02 | 0x0F | NB   | `g_product.product_id[..], len` |
+| `radar_query_hw_model()`      | 硬件型号   | 0x02 |   0xA3 | 0xA3/0x03 | 0x0F | NB   | `g_product.hw_model[..], len`   |
+| `radar_query_fw_version()`    | 固件版本   | 0x02 |   0xA4 | 0xA4/0x04 | 0x0F | NB   | `g_product.fw_version[..], len` |
+
+---
+
+# ② 接收 + 上报（设备→主机，库已解析）
+
+> 设备可能**主动上报**或对你的查询**应答**。下表列出 RX 帧进入库后**会写到哪些全局变量**与常见上报节奏（若有）。
+
+## A. 人体存在（0x80）
+
+| 来源    | CTRL |   CMD(RX) | 负载    | 写入字段                 | 频率/触发   |
+| ----- | ---: | --------: | ----- | -------------------- | ------- |
+| 上报/应答 | 0x80 | 0x00/0x80 | 1B 开关 | `g_body.enabled`     | 开关变化/查询 |
+| 上报/应答 | 0x80 | 0x01/0x81 | 1B 存在 | `g_body.exist`       | 状态变化/查询 |
+| 上报/应答 | 0x80 | 0x02/0x82 | 1B 运动 | `g_body.motion`      | 变化/查询   |
+| 上报/应答 | 0x80 | 0x03/0x83 | 1B 强度 | `g_body.body_param`  | ~1s/查询  |
+| 上报/应答 | 0x80 | 0x04/0x84 | 2B 距离 | `g_body.distance_cm` | ~2s/查询  |
+| 上报/应答 | 0x80 | 0x05/0x85 | 6B 方位 | `g_body.pos_xyz[]`   | ~2s/查询  |
+
+## B. 呼吸（0x81）
+
+| 来源    | CTRL |   CMD(RX) | 负载    | 写入字段                       | 频率/触发   |
+| ----- | ---: | --------: | ----- | -------------------------- | ------- |
+| 上报/应答 | 0x81 | 0x00/0x80 | 1B 开关 | `g_breath.enabled`         | 变化/查询   |
+| 上报/应答 | 0x81 | 0x01/0x81 | 1B 信息 | `g_breath.info`            | 状态变化/查询 |
+| 上报/应答 | 0x81 | 0x02/0x82 | 1B 速率 | `g_breath.value`           | ~3s/查询  |
+| 上报/应答 | 0x81 | 0x05/0x85 | 5B 波形 | `g_breath.wave[]`          | ~1s/查询  |
+| 上报/应答 | 0x81 | 0x0B/0x8B | 1B 阈值 | `g_breath.low_slow_thresh` | 设置回显/查询 |
+
+## C. 心率（0x85）
+
+| 来源    | CTRL |   CMD(RX) | 负载    | 写入字段              | 频率/触发  |
+| ----- | ---: | --------: | ----- | ----------------- | ------ |
+| 上报/应答 | 0x85 | 0x00/0x80 | 1B 开关 | `g_heart.enabled` | 变化/查询  |
+| 上报/应答 | 0x85 | 0x02/0x82 | 1B 心率 | `g_heart.value`   | ~3s/查询 |
+| 上报/应答 | 0x85 | 0x05/0x85 | 5B 波形 | `g_heart.wave[]`  | ~1s/查询 |
+
+## D. 睡眠（0x84）
+
+| 来源     | CTRL |                  CMD(RX) | 负载           | 写入字段                     | 频率/触发       |
+| ------ | ---: | -----------------------: | ------------ | ------------------------ | ----------- |
+| 上报/应答  | 0x84 |                0x00/0x80 | 1B 开关        | `g_sleep.enabled`        | —           |
+| 上报/应答  | 0x84 |                0x01/0x81 | 1B 入/离床      | `g_sleep.bed_state`      | 变化时         |
+| 上报/应答  | 0x84 |                0x02/0x82 | 1B 状态        | `g_sleep.state`          | 10min 上报    |
+| 上报/应答  | 0x84 |                0x03/0x83 | 2B           | `g_sleep.awake_min`      | 随 10min     |
+| 上报/应答  | 0x84 |                0x04/0x84 | 2B           | `g_sleep.light_min`      | 随 10min     |
+| 上报/应答  | 0x84 |                0x05/0x85 | 2B           | `g_sleep.deep_min`       | 随 10min     |
+| 上报/应答  | 0x84 |                0x06/0x86 | 1B 评分        | `g_sleep.score`          | 过程或查询       |
+| 上报/应答  | 0x84 |                0x0C/0x8D | 8B 10min综    | `g_sleep.composite10m.*` | 10min 上报    |
+| **上报** | 0x84 |                 **0x0D** | **12B 整夜统计** | **`g_sleep.night.*`**    | **睡眠过程结束时** |
+| **应答** | 0x84 |                 **0x8F** | **同上 12B**   | **`g_sleep.night.*`**    | 主动查询        |
+| 上报/应答  | 0x84 |                0x0E/0x8E | 1B 异常        | `g_sleep.abnormal`       | 条件触发/查询     |
+| 上报/应答  | 0x84 |                0x10/0x90 | 1B 评级        | `g_sleep.night.grade`    | 结束或查询       |
+| 应答     | 0x84 |                     0x8C | 1B 模式        | `g_sleep.cfg.mode`       | 查询          |
+| 上报/应答  | 0x84 |                0x11/0x91 | 1B 挣扎态       | `g_sleep.struggle_state` | 状态/查询       |
+| 上报/应答  | 0x84 |                0x12/0x92 | 1B 无人态       | `g_sleep.noperson_state` | 状态/查询       |
+| 应答     | 0x84 | 0x93/0x94/0x95/0x96/0x9A | 各 1B         | `g_sleep.cfg.*`          | 查询或设置回显     |
+
+## E. 系统/产品/OTA
+
+| 来源    | CTRL |             CMD(RX) | 负载    | 写入字段                 | 说明     |
+| ----- | ---: | ------------------: | ----- | -------------------- | ------ |
+| 上报/应答 | 0x01 |           0x01/0x80 | —/1B  | `g_sys.heartbeat=1`  | 心跳     |
+| 上报/应答 | 0x05 |           0x01/0x81 | 1B    | `g_sys.init_done`    | 0未/1已  |
+| 上报/应答 | 0x07 |           0x07/0x87 | 1B    | `g_sys.pos_outbound` | 0外/1内  |
+| 上报/应答 | 0x02 | 0x01/0xA1…0x04/0xA4 | N     | `g_product.*`        | 字符串    |
+| 应答    | 0x03 |      0x01/0x02/0x03 | 见 OTA | —                    | OTA 过程 |
+
+---
+
+# ③ 设置（配置/开关/阈值/模式/OTA/复位）
+
+## A. 人体存在/呼吸/心率开关
+
+| 函数（发）                              | 作用   | CTRL |  CMD |   DATA | 推荐验证（查询）                      |
+| ---------------------------------- | ---- | ---: | ---: | -----: | ----------------------------- |
+| `radar_set_body_enable(bool en)`   | 开关存在 | 0x80 | 0x00 | 1B=0/1 | `radar_query_body_enable()`   |
+| `radar_set_breath_enable(bool en)` | 开关呼吸 | 0x81 | 0x00 | 1B=0/1 | `radar_query_breath_enable()` |
+| `radar_set_heart_enable(bool en)`  | 开关心率 | 0x85 | 0x00 | 1B=0/1 | `radar_query_heart_enable()`  |
+
+## B. 睡眠配置
+
+| 函数（发）                                         | 作用     | CTRL |  CMD | DATA 值域     | 推荐验证                             |
+| --------------------------------------------- | ------ | ---: | ---: | ----------- | -------------------------------- |
+| `radar_set_sleep_enable(bool en)`             | 开关睡眠   | 0x84 | 0x00 | 0/1         | `radar_query_sleep_enable()`     |
+| `radar_set_sleep_mode(uint8_t mode)`          | 上报模式   | 0x84 | 0x0F | 0实时/1睡眠     | `radar_query_mode()`             |
+| `radar_set_sleep_struggle_enable(bool en)`    | 挣扎判读开关 | 0x84 | 0x13 | 0/1         | `radar_query_struggle_switch()`  |
+| `radar_set_sleep_noperson_enable(bool en)`    | 无人计时开关 | 0x84 | 0x14 | 0/1         | `radar_query_noperson_switch()`  |
+| `radar_set_sleep_noperson_minutes(uint8_t m)` | 无人分钟   | 0x84 | 0x15 | 5~120       | `radar_query_noperson_minutes()` |
+| `radar_set_sleep_cutoff_minutes(uint8_t m)`   | 截止分钟   | 0x84 | 0x16 | 30~180 步长10 | `radar_query_cutoff_minutes()`   |
+| `radar_set_sleep_struggle_sens(uint8_t lvl)`  | 挣扎灵敏度  | 0x84 | 0x1A | 0低/1中/2高    | `radar_query_struggle_sens()`    |
+
+## C. 呼吸阈值
+
+| 函数（发）                                  | 作用   | CTRL |  CMD |  DATA | 推荐验证                           |
+| -------------------------------------- | ---- | ---: | ---: | ----: | ------------------------------ |
+| `radar_set_breath_low_slow(uint8_t v)` | 低缓阈值 | 0x81 | 0x0B | 10~20 | `radar_query_breath_lowslow()` |
+
+## D. 系统控制/查询
+
+| 函数（发）                     | 作用     | CTRL |  CMD | DATA | 备注      |
+| ------------------------- | ------ | ---: | ---: | ---: | ------- |
+| `radar_system_reset()`    | 模组复位   | 0x01 | 0x02 | 0x0F | 复位命令    |
+| `radar_query_heartbeat()` | 心跳     | 0x01 | 0x80 | 0x0F | 应答/上报均可 |
+| `radar_query_initdone()`  | 初始化完成？ | 0x05 | 0x81 | 0x0F | 0未/1已   |
+| `radar_query_posout()`    | 探测范围   | 0x07 | 0x87 | 0x0F | 0外/1内   |
+
+## E. 产品信息（字符串）
+
+| 函数（发）                         | 作用   | CTRL |  CMD | DATA | 应答负载 |
+| ----------------------------- | ---- | ---: | ---: | ---: | ---- |
+| `radar_query_product_model()` | 产品型号 | 0x02 | 0xA1 | 0x0F | N 字节 |
+| `radar_query_product_id()`    | 产品ID | 0x02 | 0xA2 | 0x0F | N 字节 |
+| `radar_query_hw_model()`      | 硬件型号 | 0x02 | 0xA3 | 0x0F | N 字节 |
+| `radar_query_fw_version()`    | 固件版本 | 0x02 | 0xA4 | 0x0F | N 字节 |
+
+## F. OTA（可选）
+
+| 函数（发）                                              | 作用     | CTRL |  CMD | DATA 结构                | 备注        |
+| -------------------------------------------------- | ------ | ---: | ---: | ---------------------- | --------- |
+| `radar_ota_begin(total_size)`                      | 开始 OTA | 0x03 | 0x01 | 4B 总大小（BE）             | 设备回包含建议帧长 |
+| `radar_ota_send_chunk(frame_sz, offset, buf, len)` | 分片发送   | 0x03 | 0x02 | 8B 头(4B 帧长+4B 偏移) + 数据 | 遵循回包建议长度  |
+| `radar_ota_end(status)`                            | 结束     | 0x03 | 0x03 | 1B 状态(01成功/02失败)       | —         |
+
+---
 
